@@ -1472,6 +1472,10 @@ bool intMusic(void) // replayer ticker
 		// for pattern block mark feature
 		if (editor.blockMarkFlag)
 			ui.updateStatusText = true;
+
+		printf("  {\"comment\": \"pattern=%d, position=%d, row=%d\"},\n",
+		    song->currPattern, song->currPos, song->currRow
+		);
 	}
 	else // tick > 0 (handle effects)
 	{
@@ -1482,6 +1486,53 @@ bool intMusic(void) // replayer ticker
 		if (posJumpAssert)
 			nextPosition();
 	}
+
+	// cwbaker: Trace periods, offsets, and volumes for each channel
+	typedef struct voice_t
+    {
+  		volatile bool DMA_active;
+
+        uint16_t period;
+
+  		// internal registers
+  		bool DMATriggerFlag, nextSampleStage;
+  		int8_t AUD_DAT[2]; // DMA data buffer
+  		const int8_t *location; // current location
+  		uint16_t lengthCounter; // current length
+  		int32_t sampleCounter; // how many bytes left in AUD_DAT
+  		double dSample; // currently held sample point (multiplied by volume)
+  		double dDelta, dPhase;
+
+  		// for BLEP synthesis
+  		double dLastDelta, dLastPhase, dBlepOffset;
+
+  		// registers modified by Paula functions
+  		const int8_t *AUD_LC; // location (data pointer)
+  		uint16_t AUD_LEN;
+  		double AUD_PER_delta;
+  		double AUD_VOL;
+    } paulaVoice_t;
+
+    extern paulaVoice_t paula[PAULA_VOICES];
+
+    printf("  ");
+    for (int i = 0; i < PAULA_VOICES; ++i)
+    {
+        int period = 0;
+        int sample = 0;
+        int volume = 0;
+        int offset = 0;
+        if (paula[i].DMA_active && paula[i].location != NULL && paula[i].AUD_LC != NULL && paula[i].lengthCounter > 1)
+        {
+            period = paula[i].period; // song->channels[i].n_period;
+            sample = song->channels[i].n_samplenum;
+            volume = song->channels[i].n_volume;
+            moduleSample_t* s = &song->samples[sample];
+            offset = paula[i].location - &song->sampleData[s->offset];
+        }
+        printf( "[%d, %d, %d, %d], ", period, sample, volume, offset);
+    }
+    printf("\n");
 
 	// command F00 = stop song, do it here (so that the scopes are updated properly)
 	if (doStopSong)

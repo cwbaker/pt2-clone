@@ -17,6 +17,8 @@ typedef struct voice_t
 {
 	volatile bool DMA_active;
 
+	uint16_t period;
+
 	// internal registers
 	bool DMATriggerFlag, nextSampleStage;
 	int8_t AUD_DAT[2]; // DMA data buffer
@@ -42,7 +44,7 @@ static double dPaulaOutputFreq, dPeriodToDeltaDiv;
 static blep_t blep[PAULA_VOICES];
 static onePoleFilter_t filterLo, filterHi;
 static twoPoleFilter_t filterLED;
-static paulaVoice_t paula[PAULA_VOICES];
+paulaVoice_t paula[PAULA_VOICES];
 
 void paulaSetup(double dOutputFreq, uint32_t amigaModel)
 {
@@ -136,6 +138,8 @@ static void audxper(int32_t ch, uint16_t period)
 		realPeriod = 65536; // On Amiga: period 0 = period 65536 (1+65535)
 	else if (realPeriod < 113)
 		realPeriod = 113; // close to what happens on real Amiga (and low-limit needed for BLEP synthesis)
+
+	v->period = realPeriod;
 
 	// to be read on next sampling step (or on DMA trigger)
 	v->AUD_PER_delta = dPeriodToDeltaDiv / realPeriod;
