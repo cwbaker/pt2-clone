@@ -20,6 +20,7 @@
 
 static bool posJumpAssert, pBreakFlag, modRenderDone;
 static bool doStopSong; // from F00 (Set Speed)
+static bool samplesDumped = false; // for JSON sample dumping
 static int8_t pBreakPosition, oldRow, modPattern;
 static uint8_t pattDelTime, lowMask = 0xFF, pattDelTime2;
 static int16_t modPos, oldPattern, oldPos;
@@ -232,6 +233,13 @@ void modSetSpeed(int32_t speed)
 
 void doStopIt(bool resetPlayMode)
 {
+	// Close JSON structure if samples were dumped
+	if (samplesDumped)
+	{
+		printf("        ]\n    ]\n}\n");
+		samplesDumped = false;
+	}
+
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
 		lockAudio();
@@ -1410,6 +1418,31 @@ bool intMusic(void) // replayer ticker
 			setCurrRowToVisited(); // for MOD2WAV
 			updateUIPositions(); // update current song positions in UI
 
+			// Dump samples in JSON format when starting playback (first row, first position)
+			if (!samplesDumped && song->currPos == 0 && song->row == 0)
+			{
+				printf("{\n    \"samples\": [\n");
+				bool first = true;
+				for (int32_t i = 0; i < MOD_SAMPLES; i++)
+				{
+					if (song->samples[i].length > 0)
+					{
+						if (!first) printf(",\n");
+						first = false;
+						printf("        {\n");
+						printf("            \"name\": \"%.22s\",\n", song->samples[i].text);
+						printf("            \"length\": %d,\n", song->samples[i].length);
+						printf("            \"finetune\": %d,\n", song->samples[i].fineTune);
+						printf("            \"volume\": %d,\n", song->samples[i].volume);
+						printf("            \"loop_start\": %d,\n", song->samples[i].loopStart);
+						printf("            \"loop_length\": %d\n", song->samples[i].loopLength);
+						printf("        }");
+					}
+				}
+				printf("\n    ],\n    \"patterns\": [\n        [\n");
+				samplesDumped = true;
+			}
+
 			// read note data and trigger voices
 			moduleChannel_t *ch = song->channels;
 			for (int32_t i = 0; i < PAULA_VOICES; i++, ch++)
@@ -1423,7 +1456,7 @@ bool intMusic(void) // replayer ticker
 				setVisualsVolume(i, ch->n_volume);
 			}
 
-			printf("  {\"row\": [");
+			printf("            {\"row\": [");
 			for (int i = 0; i < PAULA_VOICES; ++i)
 			{
 			    static const char* notes[] =
@@ -1758,6 +1791,9 @@ void decPatt(void)
 
 void modPlay(int16_t patt, int16_t pos, int8_t row)
 {
+	// Reset sample dump flag when starting playback
+	samplesDumped = false;
+
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
 		lockAudio();
