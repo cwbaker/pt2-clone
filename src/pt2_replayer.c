@@ -1566,7 +1566,7 @@ bool intMusic(void) // replayer ticker
 		if (editor.blockMarkFlag)
 			ui.updateStatusText = true;
 
-		printf("  {\"comment\": \"pattern=%d, position=%d, row=%d\"},\n",
+		printf("            {\"comment\": \"pattern=%d, position=%d, row=%d\"},\n",
 		    song->currPattern, song->currPos, song->currRow
 		);
 	}
@@ -1608,7 +1608,7 @@ bool intMusic(void) // replayer ticker
 
     extern paulaVoice_t paula[PAULA_VOICES];
 
-    printf("  ");
+    printf("            ");
     for (int i = 0; i < PAULA_VOICES; ++i)
     {
         int period = 0;
