@@ -32,6 +32,38 @@ static const uint8_t funkTable[16] = // EFx (FunkRepeat/InvertLoop)
 	0x10, 0x13, 0x16, 0x1A, 0x20, 0x2B, 0x40, 0x80
 };
 
+int find_note_by_period(int period)
+{
+    static const int periods [] =
+    {
+    // finetune +0
+        856, 808, 762, 720, 678, 640, 604, 570, 538, 508, 480, 453, // C-1 to B-1
+        428, 404, 381, 360, 339, 320, 302, 285, 269, 254, 240, 226, // C-2 to B-2
+        214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113, // C-3 to B-3
+        0
+    };
+
+    int begin = 0;
+    int end = 3 * 12 + 1;
+    int note = begin;
+    while (note < end && periods[note] > period)
+    {
+        ++note;
+    }
+
+    if (note < 0)
+    {
+        note = 0;
+    }
+
+    int minimum_note = 0;
+    int maximum_note = 35;
+    assert(note >= minimum_note && note <= maximum_note);
+    (void) minimum_note;
+    (void) maximum_note;
+    return note;
+}
+
 void gotoNextMulti(void)
 {
 	cursor.channel = (editor.multiModeNext[cursor.channel] - 1) & 3;
@@ -1390,6 +1422,34 @@ bool intMusic(void) // replayer ticker
 
 				setVisualsVolume(i, ch->n_volume);
 			}
+
+			printf("  {\"row\": [");
+			for (int i = 0; i < PAULA_VOICES; ++i)
+			{
+			    static const char* notes[] =
+                {
+                    "c-1", "c#1", "d-1", "d#1", "e-1", "f-1", "f#1", "g-1", "g#1", "a-1", "a#1", "b-1",
+                    "c-2", "c#2", "d-2", "d#2", "e-2", "f-2", "f#2", "g-2", "g#2", "a-2", "a#2", "b-2",
+                    "c-3", "c#3", "d-3", "d#3", "e-3", "f-3", "f#3", "g-3", "g#3", "a-3", "a#3", "b-3",
+                    ""
+                };
+			    moduleChannel_t* channel = &song->channels[i];
+			    note_t note = song->patterns[modPattern][(song->row * PAULA_VOICES) + channel->n_chanindex];
+				int note_index = find_note_by_period(note.period);
+				if (note.period != 0 || note.sample != 0 || note.command != 0 || note.param != 0)
+				{
+				    printf("[\"%s\", %d, \"%x%02x\"]", notes[note_index], note.sample, note.command & 0xf, note.param);
+				}
+				else
+				{
+				    printf("[]");
+				}
+				if (i != PAULA_VOICES - 1)
+				{
+                    printf(", ");
+				}
+			}
+			printf("]},\n");
 
 			setDMA();
 		}
