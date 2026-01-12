@@ -1431,11 +1431,11 @@ bool intMusic(void) // replayer ticker
 						first = false;
 						printf("        {\n");
 						printf("            \"name\": \"%.22s\",\n", song->samples[i].text);
-						printf("            \"length\": %d,\n", song->samples[i].length);
+						printf("            \"length\": %d,\n", song->samples[i].length / 2);
 						printf("            \"finetune\": %d,\n", song->samples[i].fineTune);
 						printf("            \"volume\": %d,\n", song->samples[i].volume);
-						printf("            \"loop_start\": %d,\n", song->samples[i].loopStart);
-						printf("            \"loop_length\": %d\n", song->samples[i].loopLength);
+						printf("            \"loop_start\": %d,\n", song->samples[i].loopStart / 2);
+						printf("            \"loop_length\": %d\n", song->samples[i].loopLength / 2);
 						printf("        }");
 					}
 				}
