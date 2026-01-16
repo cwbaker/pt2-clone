@@ -1,6 +1,6 @@
 // C port of ProTracker 2.3D's replayer (with some modifications, but still accurate)
 
-// for finding memory leaks in debug mode with Visual Studio 
+// for finding memory leaks in debug mode with Visual Studio
 #if defined _DEBUG && defined _MSC_VER
 #include <crtdbg.h>
 #endif
@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
+#include <signal.h>
 #include "pt2_audio.h"
 #include "pt2_helpers.h"
 #include "pt2_tables.h"
@@ -21,11 +23,34 @@
 static bool posJumpAssert, pBreakFlag, modRenderDone;
 static bool doStopSong; // from F00 (Set Speed)
 static bool samplesDumped = false; // for JSON sample dumping
+static bool jsonNeedsClosing = false; // track if JSON needs to be closed
 static int8_t pBreakPosition, oldRow, modPattern;
 static uint8_t pattDelTime, lowMask = 0xFF, pattDelTime2;
 static int16_t modPos, oldPattern, oldPos;
 static uint16_t DMACONtemp;
 static int32_t modBPM, oldBPM, oldSpeed, ciaSetBPM;
+
+// Forward declarations for cleanup handlers
+static void closeJsonOnExit(void);
+static void signalHandler(int sig);
+
+// Function to close JSON on exit - closes pattern array, patterns array, and root object
+static void closeJsonOnExit(void)
+{
+	if (jsonNeedsClosing)
+	{
+		printf("        ]\n    ]\n}\n");
+		fflush(stdout);
+		jsonNeedsClosing = false;
+	}
+}
+
+// Signal handler for unexpected termination
+static void signalHandler(int sig)
+{
+	closeJsonOnExit();
+	exit(sig);
+}
 
 static const uint8_t funkTable[16] = // EFx (FunkRepeat/InvertLoop)
 {
@@ -233,12 +258,14 @@ void modSetSpeed(int32_t speed)
 
 void doStopIt(bool resetPlayMode)
 {
-	// Close JSON structure if samples were dumped
-	if (samplesDumped)
+	// Close JSON structure if samples were dumped - finalize current pattern, patterns array, and root object
+	if (jsonNeedsClosing)
 	{
 		printf("        ]\n    ]\n}\n");
-		samplesDumped = false;
+		fflush(stdout);
+		jsonNeedsClosing = false;
 	}
+	samplesDumped = false;
 
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
@@ -419,7 +446,7 @@ static void doRetrg(moduleChannel_t *ch)
 	const uint32_t voiceAddr = 0xDFF0A0 + (ch->n_chanindex * 16);
 
 	// voice DMA off
-	paulaWriteWord(0xDFF096, ch->n_dmabit); 
+	paulaWriteWord(0xDFF096, ch->n_dmabit);
 
 	// set voice data ptr, data length and period
 	paulaWritePtr(voiceAddr + 0, ch->n_start); // n_start is increased on 9xx
@@ -427,8 +454,8 @@ static void doRetrg(moduleChannel_t *ch)
 	paulaWriteWord(voiceAddr + 6, ch->n_period);
 
 	// voice DMA on
-	paulaWriteWord(0xDFF096, 0x8000 | ch->n_dmabit); 
-	
+	paulaWriteWord(0xDFF096, 0x8000 | ch->n_dmabit);
+
 	// set new data ptr and data length (these take effect after the current DMA cycle is done)
 	paulaWritePtr(voiceAddr + 0, ch->n_loopstart);
 	paulaWriteWord(voiceAddr + 4, ch->n_replen);
@@ -809,6 +836,8 @@ static void vibrato2(moduleChannel_t *ch)
 
 	setVisualsPeriod(ch->n_chanindex, vibratoData);
 
+	printf("vibrato2(), cmd=%02x, pos=%d, data=%d\n", ch->n_vibratocmd, ch->n_vibratopos, vibratoData);
+
 	ch->n_vibratopos += (ch->n_vibratocmd >> 2) & 0x3C;
 }
 
@@ -819,6 +848,8 @@ static void vibrato(moduleChannel_t *ch)
 
 	if ((ch->n_cmd & 0xF0) > 0)
 		ch->n_vibratocmd = (ch->n_cmd & 0xF0) | (ch->n_vibratocmd & 0x0F);
+
+	printf("vibrato(), n_vibratocmd=%02x\n", ch->n_vibratocmd);
 
 	vibrato2(ch);
 }
@@ -1366,7 +1397,7 @@ void modSetTempo(int32_t bpm, bool doLockAudio)
 	const bool audioWasntLocked = !audio.locked;
 	if (doLockAudio && audioWasntLocked)
 		lockAudio();
-	
+
 	modBPM = bpm;
 	if (!editor.pat2SmpOngoing && !editor.mod2WavOngoing)
 	{
@@ -1440,7 +1471,22 @@ bool intMusic(void) // replayer ticker
 					}
 				}
 				printf("\n    ],\n    \"patterns\": [\n        [\n");
+				fflush(stdout);
 				samplesDumped = true;
+				jsonNeedsClosing = true;
+
+				// Register cleanup handlers on first use
+				static bool handlersRegistered = false;
+				if (!handlersRegistered)
+				{
+					atexit(closeJsonOnExit);
+					signal(SIGINT, signalHandler);
+					signal(SIGTERM, signalHandler);
+#ifdef SIGQUIT
+					signal(SIGQUIT, signalHandler);
+#endif
+					handlersRegistered = true;
+				}
 			}
 
 			// read note data and trigger voices
@@ -1483,6 +1529,7 @@ bool intMusic(void) // replayer ticker
 				}
 			}
 			printf("]},\n");
+			fflush(stdout);
 
 			setDMA();
 		}
@@ -1791,7 +1838,15 @@ void decPatt(void)
 
 void modPlay(int16_t patt, int16_t pos, int8_t row)
 {
-	// Reset sample dump flag when starting playback
+	// Close any previous JSON before starting new playback to ensure clean output
+	if (jsonNeedsClosing)
+	{
+		printf("        ]\n    ]\n}\n");
+		fflush(stdout);
+		jsonNeedsClosing = false;
+	}
+
+	// Reset sample dump flags when starting playback
 	samplesDumped = false;
 
 	const bool audioWasntLocked = !audio.locked;
@@ -1869,6 +1924,15 @@ void clearSong(void)
 	assert(song != NULL);
 	if (song == NULL)
 		return;
+
+	// Close any active JSON before clearing song to ensure proper termination
+	if (jsonNeedsClosing)
+	{
+		printf("        ]\n    ]\n}\n");
+		fflush(stdout);
+		jsonNeedsClosing = false;
+	}
+	samplesDumped = false;
 
 	memset(song->header.patternTable, 0, sizeof (song->header.patternTable));
 	memset(song->header.name, 0, sizeof (song->header.name));
@@ -1963,6 +2027,15 @@ void modFree(void)
 {
 	if (song == NULL)
 		return; // not allocated
+
+	// Close any active JSON before freeing module to prevent incomplete output
+	if (jsonNeedsClosing)
+	{
+		printf("        ]\n    ]\n}\n");
+		fflush(stdout);
+		jsonNeedsClosing = false;
+	}
+	samplesDumped = false;
 
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
