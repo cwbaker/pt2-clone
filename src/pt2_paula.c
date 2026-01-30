@@ -18,6 +18,7 @@ typedef struct voice_t
 	volatile bool DMA_active;
 
 	uint16_t period;
+	uint16_t volume;
 
 	// internal registers
 	bool DMATriggerFlag, nextSampleStage;
@@ -154,6 +155,8 @@ static void audxvol(int32_t ch, uint16_t vol)
 	int32_t realVol = vol & 127;
 	if (realVol > 64)
 		realVol = 64;
+
+	paula[ch].volume = realVol;
 
 	// multiplying sample point by this also scales the sample from -128..127 -> -1.000 .. ~0.992
 	paula[ch].AUD_VOL = realVol * (1.0 / (128.0 * 64.0));

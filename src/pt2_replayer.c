@@ -1633,6 +1633,7 @@ bool intMusic(void) // replayer ticker
   		volatile bool DMA_active;
 
         uint16_t period;
+        uint16_t volume;
 
   		// internal registers
   		bool DMATriggerFlag, nextSampleStage;
@@ -1666,7 +1667,7 @@ bool intMusic(void) // replayer ticker
         {
             period = paula[i].period; // song->channels[i].n_period;
             sample = song->channels[i].n_samplenum;
-            volume = song->channels[i].n_volume;
+            volume = paula[i].volume; // song->channels[i].n_volume;
             moduleSample_t* s = &song->samples[sample];
             offset = paula[i].location - &song->sampleData[s->offset];
         }
