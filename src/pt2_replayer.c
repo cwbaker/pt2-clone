@@ -836,8 +836,6 @@ static void vibrato2(moduleChannel_t *ch)
 
 	setVisualsPeriod(ch->n_chanindex, vibratoData);
 
-	printf("vibrato2(), cmd=%02x, pos=%d, data=%d\n", ch->n_vibratocmd, ch->n_vibratopos, vibratoData);
-
 	ch->n_vibratopos += (ch->n_vibratocmd >> 2) & 0x3C;
 }
 
@@ -848,8 +846,6 @@ static void vibrato(moduleChannel_t *ch)
 
 	if ((ch->n_cmd & 0xF0) > 0)
 		ch->n_vibratocmd = (ch->n_cmd & 0xF0) | (ch->n_vibratocmd & 0x0F);
-
-	printf("vibrato(), n_vibratocmd=%02x\n", ch->n_vibratocmd);
 
 	vibrato2(ch);
 }
