@@ -1628,8 +1628,8 @@ bool intMusic(void) // replayer ticker
     {
   		volatile bool DMA_active;
 
-        uint16_t period;
-        uint16_t volume;
+        int period;
+        int volume;
 
   		// internal registers
   		bool DMATriggerFlag, nextSampleStage;
@@ -1667,7 +1667,14 @@ bool intMusic(void) // replayer ticker
             moduleSample_t* s = &song->samples[sample];
             offset = paula[i].location - &song->sampleData[s->offset];
         }
-        printf( "[%d, %d, %d, %d], ", period, sample, volume, offset);
+        if (period != 0 || volume != 0 || offset != 0)
+        {
+            printf( "[%d, %d, %d, %d], ", period, sample + 1, volume, offset);
+        }
+        else
+        {
+            printf( "[], ");
+        }
     }
     printf("\n");
 

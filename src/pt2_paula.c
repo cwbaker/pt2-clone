@@ -17,8 +17,8 @@ typedef struct voice_t
 {
 	volatile bool DMA_active;
 
-	uint16_t period;
-	uint16_t volume;
+	int period;
+	int volume;
 
 	// internal registers
 	bool DMATriggerFlag, nextSampleStage;
