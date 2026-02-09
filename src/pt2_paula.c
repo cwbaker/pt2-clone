@@ -145,6 +145,8 @@ static void audxper(int32_t ch, uint16_t period)
 	// to be read on next sampling step (or on DMA trigger)
 	v->AUD_PER_delta = dPeriodToDeltaDiv / realPeriod;
 
+	printf("AUD_PER_delta = %f\n", v->AUD_PER_delta);
+
 	// handle BLEP synthesis edge-case
 	if (v->dLastDelta == 0.0)
 		v->dLastDelta = v->AUD_PER_delta;
@@ -357,6 +359,8 @@ void clearBlepState(void)
 	memset(blep, 0, sizeof (blep));
 }
 
+#include "pt2_structs.h"
+
 // output is -4.00 .. 3.97 (can be louder because of high-pass filter)
 void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 {
@@ -405,6 +409,17 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 				v->dPhase -= 1.0;
 				refetchPeriod(v);
 			}
+
+			int offset = 0;
+			if (v->lengthCounter > 1)
+            {
+                int sample = song->channels[i].n_samplenum;
+                extern module_t *song; // pt2_main.c
+                moduleSample_t* s = &song->samples[sample];
+                offset = paula[i].location - &song->sampleData[s->offset];
+            }
+
+			printf("dPhase=%g, dDelta=%g, offset=%d\n", v->dPhase, v->dDelta, offset);
 		}
 	}
 

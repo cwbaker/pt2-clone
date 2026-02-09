@@ -373,6 +373,11 @@ static void SDLCALL audioCallback(void *userdata, Uint8 *stream, int len)
 				audio.tickSampleCounterFrac &= BPM_FRAC_MASK;
 				audio.tickSampleCounter++;
 			}
+
+			if (editor.songPlaying)
+			{
+			    printf("tickSampleCounter=%d, tickSampleCounterFrac=%zu\n", audio.tickSampleCounter, audio.tickSampleCounterFrac);
+			}
 		}
 
 		uint32_t samplesToMix = samplesLeft;
