@@ -498,7 +498,8 @@ bool setupAudio(void)
 
 	audio.outputRate = have.freq;
 	audio.audioBufferSize = have.samples;
-	audio.oversamplingFlag = (audio.outputRate < 96000); // we do 2x oversampling if the audio output rate is below 96kHz
+	// audio.oversamplingFlag = (audio.outputRate < 96000); // we do 2x oversampling if the audio output rate is below 96kHz
+	audio.oversamplingFlag = false;
 	audio.amigaModel = config.amigaModel;
 
 	uint32_t maxFrequency = audio.outputRate;
