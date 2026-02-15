@@ -1661,11 +1661,25 @@ bool intMusic(void) // replayer ticker
         int offset = 0;
         if (paula[i].DMA_active && paula[i].location != NULL && paula[i].AUD_LC != NULL && paula[i].lengthCounter > 1)
         {
-            period = paula[i].period; // song->channels[i].n_period;
-            sample = song->channels[i].n_samplenum;
-            volume = paula[i].volume; // song->channels[i].n_volume;
-            moduleSample_t* s = &song->samples[sample];
-            offset = paula[i].location - &song->sampleData[s->offset];
+            period = paula[i].period;
+            volume = paula[i].volume;
+
+            // Search through all samples to find which one contains paula[i].location
+            for (int j = 0; j < MOD_SAMPLES; j++)
+            {
+                moduleSample_t *s = &song->samples[j];
+                if (s->length > 0)
+                {
+                    const int8_t *start = &song->sampleData[s->offset];
+                    const int8_t *end = start + s->length;
+                    if (paula[i].location >= start && paula[i].location < end)
+                    {
+                        sample = j;
+                        offset = (int)(paula[i].location - start);
+                        break;
+                    }
+                }
+            }
         }
         if (period != 0 || volume != 0 || offset != 0)
         {
