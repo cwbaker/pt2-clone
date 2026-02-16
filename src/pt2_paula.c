@@ -397,6 +397,29 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 				nextSample(v, b);
 			}
 
+			int offset = 0;
+			if (v->lengthCounter > 1)
+            {
+                // Search through all samples to find which one contains paula[i].location
+                for (int k = 0; k < MOD_SAMPLES; k++)
+                {
+                    moduleSample_t *s = &song->samples[k];
+                    if (s->length > 0)
+                    {
+                        const int8_t *start = &song->sampleData[s->offset];
+                        const int8_t *end = start + s->length;
+                        if (paula[i].location >= start && paula[i].location < end)
+                        {
+                            offset = (int)(paula[i].location - start);
+                            break;
+                        }
+                    }
+                }
+
+                offset = offset - 2 + (1 - paula[i].sampleCounter);
+            }
+			printf("offset=%g, dDelta=%g\n", (double) offset + v->dPhase, v->dDelta);
+
 			double dSample = v->dSample; // current sample, pre-multiplied by vol, scaled to -1.0 .. 0.992
 			if (b->samplesLeft > 0)
 				dSample = blepRun(b, dSample);
@@ -409,17 +432,6 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 				v->dPhase -= 1.0;
 				refetchPeriod(v);
 			}
-
-			int offset = 0;
-			if (v->lengthCounter > 1)
-            {
-                int sample = song->channels[i].n_samplenum;
-                extern module_t *song; // pt2_main.c
-                moduleSample_t* s = &song->samples[sample];
-                offset = paula[i].location - &song->sampleData[s->offset];
-            }
-
-			printf("dPhase=%g, dDelta=%g, offset=%d\n", v->dPhase, v->dDelta, offset);
 		}
 	}
 
