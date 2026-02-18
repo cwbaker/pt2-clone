@@ -145,7 +145,7 @@ static void audxper(int32_t ch, uint16_t period)
 	// to be read on next sampling step (or on DMA trigger)
 	v->AUD_PER_delta = dPeriodToDeltaDiv / realPeriod;
 
-	printf("AUD_PER_delta = %f\n", v->AUD_PER_delta);
+	// printf("AUD_PER_delta = %f\n", v->AUD_PER_delta);
 
 	// handle BLEP synthesis edge-case
 	if (v->dLastDelta == 0.0)
@@ -391,34 +391,11 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 		double *dMixBuffer = dMixBufSelect[i]; // what output channel to mix into (L, R, R, L)
 		for (int32_t j = 0; j < numSamples; j++)
 		{
-			if (v->nextSampleStage)
+		    if (v->nextSampleStage)
 			{
 				v->nextSampleStage = false;
 				nextSample(v, b);
 			}
-
-			int offset = 0;
-			if (v->lengthCounter > 1)
-            {
-                // Search through all samples to find which one contains paula[i].location
-                for (int k = 0; k < MOD_SAMPLES; k++)
-                {
-                    moduleSample_t *s = &song->samples[k];
-                    if (s->length > 0)
-                    {
-                        const int8_t *start = &song->sampleData[s->offset];
-                        const int8_t *end = start + s->length;
-                        if (paula[i].location >= start && paula[i].location < end)
-                        {
-                            offset = (int)(paula[i].location - start);
-                            break;
-                        }
-                    }
-                }
-
-                offset = offset - 2 + (1 - paula[i].sampleCounter);
-            }
-			printf("offset=%g, dDelta=%g\n", (double) offset + v->dPhase, v->dDelta);
 
 			double dSample = v->dSample; // current sample, pre-multiplied by vol, scaled to -1.0 .. 0.992
 			if (b->samplesLeft > 0)
@@ -427,6 +404,34 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 			dMixBuffer[j] += dSample;
 
 			v->dPhase += v->dDelta;
+
+			// int offset = 0;
+   //  		int offset2 = 0;
+   //  		if (v->lengthCounter >= 1)
+   //          {
+   //              // Search through all samples to find which one contains paula[i].location
+   //              for (int k = 0; k < MOD_SAMPLES; k++)
+   //              {
+   //                  moduleSample_t *s = &song->samples[k];
+   //                  if (s->length > 0)
+   //                  {
+   //                      const int8_t *start = &song->sampleData[s->offset];
+   //                      const int8_t *end = start + s->length;
+   //                      const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter);
+   //                      if (location >= start && location < end)
+   //                      {
+   //                          offset = (int)(location - start);
+   //                          offset2 = s->length - paula[i].lengthCounter * 2;
+   //                          break;
+   //                      }
+   //                  }
+   //              }
+
+   //              // offset = offset - 2 + (1 - paula[i].sampleCounter);
+   //              offset2 = offset2 + (1 - paula[i].sampleCounter);
+   //          }
+   //          // printf("offset=%g, offset2=%g, dDelta=%g\n", (double) offset + v->dPhase, (double) offset2 + v->dPhase, v->dDelta);
+
 			if (v->dPhase >= 1.0)
 			{
 				v->dPhase -= 1.0;

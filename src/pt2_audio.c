@@ -376,7 +376,7 @@ static void SDLCALL audioCallback(void *userdata, Uint8 *stream, int len)
 
 			if (editor.songPlaying)
 			{
-			    printf("tickSampleCounter=%d, tickSampleCounterFrac=%zu\n", audio.tickSampleCounter, audio.tickSampleCounterFrac);
+			    // printf("tickSampleCounter=%d, tickSampleCounterFrac=%zu\n", audio.tickSampleCounter, audio.tickSampleCounterFrac);
 			}
 		}
 
