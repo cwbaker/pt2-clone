@@ -1659,7 +1659,7 @@ bool intMusic(void) // replayer ticker
         int sample = 0;
         int volume = 0;
         int offset = 0;
-        if (paula[i].DMA_active && paula[i].location != NULL && paula[i].AUD_LC != NULL && paula[i].lengthCounter > 1)
+        if (paula[i].DMA_active && paula[i].location != NULL && paula[i].AUD_LC != NULL && paula[i].lengthCounter >= 1)
         {
             period = paula[i].period;
             volume = paula[i].volume;
@@ -1672,10 +1672,12 @@ bool intMusic(void) // replayer ticker
                 {
                     const int8_t *start = &song->sampleData[s->offset];
                     const int8_t *end = start + s->length;
-                    if (paula[i].location >= start && paula[i].location < end)
+                    const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter) + (paula[i].nextSampleStage ? 1 : 0);
+                    if (location >= start && location < end)
                     {
                         sample = j;
-                        offset = (int)(paula[i].location - start);
+                        offset = (int) floorf((double) (location - start) + paula[i].dPhase);
+                        // printf("offset=%d %g\n", offset, (double) (location - start) + paula[i].dPhase);
                         break;
                     }
                 }
@@ -1683,7 +1685,7 @@ bool intMusic(void) // replayer ticker
         }
         if (period != 0 || volume != 0 || offset != 0)
         {
-            printf( "[%d, %d, %d, %d], ", period, sample + 1, volume, offset);
+            printf("[%d, %d, %d, %d], ", period, sample + 1, volume, offset);
         }
         else
         {
