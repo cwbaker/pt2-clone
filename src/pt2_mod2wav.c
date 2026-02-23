@@ -332,6 +332,12 @@ static int32_t SDLCALL mod2WavThreadFunc(void *ptr)
 	if (editor.abortMod2Wav)
 		editor.mod2WavOngoing = false;
 
+	// HACK: Exit out once the song has finished playing and reached its end
+	// so that pt2-clone can be used as a command line tool to generate JSON
+	// test scripts for Amp.
+	// exit(0);
+	editor.programRunning = false;
+
 	return true;
 }
 
@@ -351,20 +357,22 @@ static void setBackDirIfNeeded(void)
 
 bool mod2WavRender(char *filename)
 {
-	struct stat statBuffer;
-
 	lastFilename[0] = '\0'; // for rendering-thread
 
 	assureModulesDir();
 
-	if (stat(filename, &statBuffer) == 0)
-	{
-		if (!askBox(ASKBOX_YES_NO, "OVERWRITE FILE?"))
-		{
-			setBackDirIfNeeded();
-			return false;
-		}
-	}
+	// HACK: Comment out the check to prevent overwriting existing files to
+	// use the mod2wav mode as a way to generate JSON tests scripts for Amp
+	// quickly.
+	// struct stat statBuffer;
+	// if (stat(filename, &statBuffer) == 0)
+	// {
+	// 	if (!askBox(ASKBOX_YES_NO, "OVERWRITE FILE?"))
+	// 	{
+	// 		setBackDirIfNeeded();
+	// 		return false;
+	// 	}
+	// }
 
 	FILE *fOut = fopen(filename, "wb");
 	if (fOut == NULL)

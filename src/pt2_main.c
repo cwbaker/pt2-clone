@@ -1,4 +1,5 @@
-// for finding memory leaks in debug mode with Visual Studio 
+// for finding memory leaks in debug mode with Visual Studio
+#include "pt2_mod2wav.h"
 #if defined _DEBUG && defined _MSC_VER
 #include <crtdbg.h>
 #endif
@@ -346,6 +347,8 @@ int main(int argc, char *argv[])
 
 	editor.mainLoopOngoing = true;
 	hpc_ResetCounters(&video.vblankHpc); // this must be the last thing we do before entering the main loop
+
+	mod2WavRender("output.wav");
 
 	// XXX: if you change anything in the main loop, make sure it goes in the askBox()(pt2_askbox.c) loop too, if needed
 	while (editor.programRunning)
