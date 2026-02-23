@@ -1661,24 +1661,31 @@ bool intMusic(void) // replayer ticker
         int offset = 0;
         if (paula[i].DMA_active && paula[i].location != NULL && paula[i].AUD_LC != NULL && paula[i].lengthCounter >= 1)
         {
-            period = paula[i].period;
-            volume = paula[i].volume;
-
-            // Search through all samples to find which one contains paula[i].location
-            for (int j = 0; j < MOD_SAMPLES; j++)
+            // Ignore non-looping samples looping over the two zero samples
+            // at the start of the sample.  This is effectively not playing
+            // and Amp expects this to be logged as an empty array, i.e.
+            // period, sample, volume, and offset are all 0.
+            if (paula[i].lengthCounter > 2 || paula[i].AUD_LEN > 2)
             {
-                moduleSample_t *s = &song->samples[j];
-                if (s->length > 0)
+                period = paula[i].period;
+                volume = paula[i].volume;
+
+                // Search through all samples to find which one contains paula[i].location
+                for (int j = 0; j < MOD_SAMPLES; j++)
                 {
-                    const int8_t *start = &song->sampleData[s->offset];
-                    const int8_t *end = start + s->length;
-                    const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter) + (paula[i].nextSampleStage ? 1 : 0);
-                    if (location >= start && location < end)
+                    moduleSample_t *s = &song->samples[j];
+                    if (s->length > 0)
                     {
-                        sample = j;
-                        offset = (int) floorf((double) (location - start) + paula[i].dPhase);
-                        // printf("offset=%d %g\n", offset, (double) (location - start) + paula[i].dPhase);
-                        break;
+                        const int8_t *start = &song->sampleData[s->offset];
+                        const int8_t *end = start + s->length;
+                        const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter) + (paula[i].nextSampleStage ? 1 : 0);
+                        if (location >= start && location < end)
+                        {
+                            sample = j;
+                            offset = (int) floorf((double) (location - start) + paula[i].dPhase);
+                            // printf("offset=%d %g\n", offset, (double) (location - start) + paula[i].dPhase);
+                            break;
+                        }
                     }
                 }
             }
