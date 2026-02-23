@@ -1448,25 +1448,7 @@ bool intMusic(void) // replayer ticker
 			// Dump samples in JSON format when starting playback (first row, first position)
 			if (!samplesDumped && song->currPos == 0 && song->row == 0)
 			{
-				printf("{\n    \"samples\": [\n");
-				bool first = true;
-				for (int32_t i = 0; i < MOD_SAMPLES; i++)
-				{
-					if (song->samples[i].length > 0)
-					{
-						if (!first) printf(",\n");
-						first = false;
-						printf("        {\n");
-						printf("            \"name\": \"%.22s\",\n", song->samples[i].text);
-						printf("            \"length\": %d,\n", song->samples[i].length);
-						printf("            \"finetune\": %d,\n", song->samples[i].fineTune);
-						printf("            \"volume\": %d,\n", song->samples[i].volume);
-						printf("            \"loop_start\": %d,\n", song->samples[i].loopStart);
-						printf("            \"loop_length\": %d\n", song->samples[i].loopLength);
-						printf("        }");
-					}
-				}
-				printf("\n    ],\n    \"patterns\": [\n        [\n");
+				printf("{\n  \"ticks\": [\n");
 				fflush(stdout);
 				samplesDumped = true;
 				jsonNeedsClosing = true;
@@ -1498,34 +1480,34 @@ bool intMusic(void) // replayer ticker
 				setVisualsVolume(i, ch->n_volume);
 			}
 
-			printf("            {\"row\": [");
-			for (int i = 0; i < PAULA_VOICES; ++i)
-			{
-			    static const char* notes[] =
-                {
-                    "c-1", "c#1", "d-1", "d#1", "e-1", "f-1", "f#1", "g-1", "g#1", "a-1", "a#1", "b-1",
-                    "c-2", "c#2", "d-2", "d#2", "e-2", "f-2", "f#2", "g-2", "g#2", "a-2", "a#2", "b-2",
-                    "c-3", "c#3", "d-3", "d#3", "e-3", "f-3", "f#3", "g-3", "g#3", "a-3", "a#3", "b-3",
-                    ""
-                };
-			    moduleChannel_t* channel = &song->channels[i];
-			    note_t note = song->patterns[modPattern][(song->row * PAULA_VOICES) + channel->n_chanindex];
-				int note_index = find_note_by_period(note.period);
-				if (note.period != 0 || note.sample != 0 || note.command != 0 || note.param != 0)
-				{
-				    printf("[\"%s\", %d, \"%x%02x\"]", notes[note_index], note.sample, note.command & 0xf, note.param);
-				}
-				else
-				{
-				    printf("[]");
-				}
-				if (i != PAULA_VOICES - 1)
-				{
-                    printf(", ");
-				}
-			}
-			printf("]},\n");
-			fflush(stdout);
+			// printf("            {\"row\": [");
+			// for (int i = 0; i < PAULA_VOICES; ++i)
+			// {
+			//     static const char* notes[] =
+   //              {
+   //                  "c-1", "c#1", "d-1", "d#1", "e-1", "f-1", "f#1", "g-1", "g#1", "a-1", "a#1", "b-1",
+   //                  "c-2", "c#2", "d-2", "d#2", "e-2", "f-2", "f#2", "g-2", "g#2", "a-2", "a#2", "b-2",
+   //                  "c-3", "c#3", "d-3", "d#3", "e-3", "f-3", "f#3", "g-3", "g#3", "a-3", "a#3", "b-3",
+   //                  ""
+   //              };
+			//     moduleChannel_t* channel = &song->channels[i];
+			//     note_t note = song->patterns[modPattern][(song->row * PAULA_VOICES) + channel->n_chanindex];
+			// 	int note_index = find_note_by_period(note.period);
+			// 	if (note.period != 0 || note.sample != 0 || note.command != 0 || note.param != 0)
+			// 	{
+			// 	    printf("[\"%s\", %d, \"%x%02x\"]", notes[note_index], note.sample, note.command & 0xf, note.param);
+			// 	}
+			// 	else
+			// 	{
+			// 	    printf("[]");
+			// 	}
+			// 	if (i != PAULA_VOICES - 1)
+			// 	{
+   //                  printf(", ");
+			// 	}
+			// }
+			// printf("]},\n");
+			// fflush(stdout);
 
 			setDMA();
 		}
