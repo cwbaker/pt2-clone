@@ -1661,7 +1661,7 @@ bool intMusic(void) // replayer ticker
                         const int8_t *start = &song->sampleData[s->offset];
                         const int8_t *end = start + s->length;
                         const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter) + (paula[i].nextSampleStage ? 1 : 0);
-                        if (location >= start && location < end)
+                        if (location >= start && location <= end)
                         {
                             sample = j;
                             offset = (int) floorf((double) (location - start) + paula[i].dPhase);
