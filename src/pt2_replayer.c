@@ -1661,8 +1661,24 @@ bool intMusic(void) // replayer ticker
                         const int8_t *start = &song->sampleData[s->offset];
                         const int8_t *end = start + s->length;
                         const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter) + (paula[i].nextSampleStage ? 1 : 0);
+                        const int8_t *aud_lc = paula[i].AUD_LC;
                         if (location >= start && location <= end)
                         {
+                            // If the loop start is outside of the sample then this
+                            // channel has encountered the special case of a finished
+                            // sample changing to a different sample with a portamento
+                            // to tone effect.  This delays the start of the new sample
+                            // until the next sample is fetched from memory and starts
+                            // playing that sample from the loop start point.
+                            if (aud_lc < start || aud_lc > end)
+                            {
+                                period = 0;
+                                sample = 0;
+                                volume = 0;
+                                offset = 0;
+                                break;
+                            }
+
                             sample = j;
                             offset = (int) floorf((double) (location - start) + paula[i].dPhase);
                             // printf("offset=%d %g\n", offset, (double) (location - start) + paula[i].dPhase);
