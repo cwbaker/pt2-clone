@@ -386,7 +386,7 @@ bool mod2WavRender(char *filename)
 
 	strncpy(lastFilename, filename, PATH_MAX-1); // for rendering-thread
 
-	const int32_t paulaMixFrequency = config.mod2WavOutputFreq * 2; // *2 for oversampling (we always do oversampling in MOD2WAV)
+	const int32_t paulaMixFrequency = config.mod2WavOutputFreq;
 	int32_t maxSamplesPerTick = (int32_t)ceil(paulaMixFrequency / (MIN_BPM / 2.5)) + 1;
 
 	mod2WavBuffer = (int16_t *)malloc((TICKS_PER_RENDER_CHUNK * maxSamplesPerTick) * sizeof (int16_t) * 2);
@@ -403,7 +403,8 @@ bool mod2WavRender(char *filename)
 		SDL_Delay(5);
 
 	// do some prep work
-	audio.oversamplingFlag = true;
+	// audio.oversamplingFlag = true;
+	audio.oversamplingFlag = false;
 	generateBpmTable(config.mod2WavOutputFreq, editor.timingMode == TEMPO_MODE_VBLANK);
 	paulaSetup(paulaMixFrequency, audio.amigaModel);
 	storeTempVariables();

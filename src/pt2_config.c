@@ -65,7 +65,8 @@ void loadConfig(void)
 	config.pixelFilter = PIXELFILTER_NEAREST;
 	config.integerScaling = true;
 	config.audioInputFrequency = 44100;
-	config.mod2WavOutputFreq = 44100;
+	// config.mod2WavOutputFreq = 44100;
+	config.mod2WavOutputFreq = 48000;
 	config.keepEditModeAfterStepPlay = false;
 	config.maxSampleLength = 65534;
 	config.restrictedPattEditClick = false;
