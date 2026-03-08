@@ -1592,7 +1592,7 @@ bool intMusic(void) // replayer ticker
 			ui.updateStatusText = true;
 
 		printf("            {\"comment\": \"pattern=%d, position=%d, row=%d\"},\n",
-		    modPattern, modPos, song->row
+		    modPattern, modPos, song->row - 1
 		);
 	}
 	else // tick > 0 (handle effects)
