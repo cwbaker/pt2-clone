@@ -277,7 +277,7 @@ static void dumpPatternsJson(void)
 		{
 			if (row % 16 == 0)
 				printf("            {\"comment\": \"pattern=%d, row=%d\"},\n", pat, row);
-			printf("            {\"row\": [");
+			printf("            [");
 			for (int ch = 0; ch < PAULA_VOICES; ch++)
 			{
 				note_t *n = &song->patterns[pat][(row * PAULA_VOICES) + ch];
@@ -293,7 +293,7 @@ static void dumpPatternsJson(void)
 				if (ch < PAULA_VOICES - 1)
 					printf(", ");
 			}
-			printf("]}%s\n", row < MOD_ROWS - 1 ? "," : "");
+			printf("]%s\n", row < MOD_ROWS - 1 ? "," : "");
 		}
 		printf("        ]%s\n", pat < maxPattern ? "," : "");
 	}
