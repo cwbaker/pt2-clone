@@ -85,7 +85,8 @@ void dumpClose(void)
 	}
 }
 
-// Look up a note index (0-36) from a period value
+// Look up a note index (0-37) from a period value.
+// Returns 0 for period 0, 1-36 for standard notes, 37 for out-of-range periods.
 static int dumpFindNoteByPeriod(int period)
 {
 	static const int periods[] =
@@ -94,28 +95,18 @@ static int dumpFindNoteByPeriod(int period)
 		856, 808, 762, 720, 678, 640, 604, 570, 538, 508, 480, 453, // C-1 to B-1
 		428, 404, 381, 360, 339, 320, 302, 285, 269, 254, 240, 226, // C-2 to B-2
 		214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113, // C-3 to B-3
-		0
 	};
 
-	int begin = 0;
-	int end = 3 * 12 + 1;
-	int note = begin;
-	while (note < end && periods[note] > period)
+	if ((period & 0xfff) > 0)
 	{
-		++note;
+		int note = 0;
+		while (note < 3 * 12 && periods[note] > period)
+		{
+			++note;
+		}
+		return note + 1;
 	}
-
-	if (note < 0)
-	{
-		note = 0;
-	}
-
-	int minimum_note = 0;
-	int maximum_note = 35;
-	assert(note >= minimum_note && note <= maximum_note);
-	(void)minimum_note;
-	(void)maximum_note;
-	return note;
+	return 0;
 }
 
 // Print a comment line for the current row (pattern, position, row)
@@ -249,10 +240,10 @@ static void dumpPatternsJson(void)
 {
 	static const char *notes[] =
 	{
+		"",
 		"c-1", "c#1", "d-1", "d#1", "e-1", "f-1", "f#1", "g-1", "g#1", "a-1", "a#1", "b-1",
 		"c-2", "c#2", "d-2", "d#2", "e-2", "f-2", "f#2", "g-2", "g#2", "a-2", "a#2", "b-2",
 		"c-3", "c#3", "d-3", "d#3", "e-3", "f-3", "f#3", "g-3", "g#3", "a-3", "a#3", "b-3",
-		""
 	};
 
 	// Find the highest pattern number referenced in the order table
@@ -284,7 +275,14 @@ static void dumpPatternsJson(void)
 				if (n->period != 0 || n->sample != 0 || n->command != 0 || n->param != 0)
 				{
 					int noteIndex = dumpFindNoteByPeriod(n->period);
-					printf("[\"%s\", %d, \"%x%02x\"]", notes[noteIndex], n->sample, n->command & 0xf, n->param);
+					if (noteIndex >= 37)
+					{
+						printf("[%d, %d, \"%x%02x\"]", n->period, n->sample, n->command & 0xf, n->param);
+					}
+					else
+					{
+						printf("[\"%s\", %d, \"%x%02x\"]", notes[noteIndex], n->sample, n->command & 0xf, n->param);
+					}
 				}
 				else
 				{
