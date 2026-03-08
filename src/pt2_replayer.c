@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <signal.h>
 #include "pt2_audio.h"
 #include "pt2_helpers.h"
 #include "pt2_tables.h"
@@ -19,76 +18,21 @@
 #include "pt2_paula.h"
 #include "pt2_visuals_sync.h"
 #include "pt2_posed.h"
+#include "pt2_dump.h"
 
 static bool posJumpAssert, pBreakFlag, modRenderDone;
 static bool doStopSong; // from F00 (Set Speed)
-static bool samplesDumped = false; // for JSON sample dumping
-static bool jsonNeedsClosing = false; // track if JSON needs to be closed
 static int8_t pBreakPosition, oldRow, modPattern;
 static uint8_t pattDelTime, lowMask = 0xFF, pattDelTime2;
 static int16_t modPos, oldPattern, oldPos;
 static uint16_t DMACONtemp;
 static int32_t modBPM, oldBPM, oldSpeed, ciaSetBPM;
 
-// Forward declarations for cleanup handlers
-static void closeJsonOnExit(void);
-static void signalHandler(int sig);
-
-// Function to close JSON on exit - closes pattern array, patterns array, and root object
-static void closeJsonOnExit(void)
-{
-	if (jsonNeedsClosing)
-	{
-		printf("        ]\n    ]\n}\n");
-		fflush(stdout);
-		jsonNeedsClosing = false;
-	}
-}
-
-// Signal handler for unexpected termination
-static void signalHandler(int sig)
-{
-	closeJsonOnExit();
-	exit(sig);
-}
-
 static const uint8_t funkTable[16] = // EFx (FunkRepeat/InvertLoop)
 {
 	0x00, 0x05, 0x06, 0x07, 0x08, 0x0A, 0x0B, 0x0D,
 	0x10, 0x13, 0x16, 0x1A, 0x20, 0x2B, 0x40, 0x80
 };
-
-int find_note_by_period(int period)
-{
-    static const int periods [] =
-    {
-    // finetune +0
-        856, 808, 762, 720, 678, 640, 604, 570, 538, 508, 480, 453, // C-1 to B-1
-        428, 404, 381, 360, 339, 320, 302, 285, 269, 254, 240, 226, // C-2 to B-2
-        214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113, // C-3 to B-3
-        0
-    };
-
-    int begin = 0;
-    int end = 3 * 12 + 1;
-    int note = begin;
-    while (note < end && periods[note] > period)
-    {
-        ++note;
-    }
-
-    if (note < 0)
-    {
-        note = 0;
-    }
-
-    int minimum_note = 0;
-    int maximum_note = 35;
-    assert(note >= minimum_note && note <= maximum_note);
-    (void) minimum_note;
-    (void) maximum_note;
-    return note;
-}
 
 void gotoNextMulti(void)
 {
@@ -258,14 +202,7 @@ void modSetSpeed(int32_t speed)
 
 void doStopIt(bool resetPlayMode)
 {
-	// Close JSON structure if samples were dumped - finalize current pattern, patterns array, and root object
-	if (jsonNeedsClosing)
-	{
-		printf("        ]\n    ]\n}\n");
-		fflush(stdout);
-		jsonNeedsClosing = false;
-	}
-	samplesDumped = false;
+	dumpClose();
 
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
@@ -1445,27 +1382,11 @@ bool intMusic(void) // replayer ticker
 			setCurrRowToVisited(); // for MOD2WAV
 			updateUIPositions(); // update current song positions in UI
 
-			// Dump samples in JSON format when starting playback (first row, first position)
-			if (!samplesDumped && song->currPos == 0 && song->row == 0)
-			{
-				printf("{\n  \"ticks\": [\n");
-				fflush(stdout);
-				samplesDumped = true;
-				jsonNeedsClosing = true;
+			// Dump module in JSON format when starting playback (first row, first position)
+			if (song->currPos == 0 && song->row == 0)
+				dumpOpen();
 
-				// Register cleanup handlers on first use
-				static bool handlersRegistered = false;
-				if (!handlersRegistered)
-				{
-					atexit(closeJsonOnExit);
-					signal(SIGINT, signalHandler);
-					signal(SIGTERM, signalHandler);
-#ifdef SIGQUIT
-					signal(SIGQUIT, signalHandler);
-#endif
-					handlersRegistered = true;
-				}
-			}
+			dumpTickComment(modPattern, modPos, song->row);
 
 			// read note data and trigger voices
 			moduleChannel_t *ch = song->channels;
@@ -1479,35 +1400,6 @@ bool intMusic(void) // replayer ticker
 
 				setVisualsVolume(i, ch->n_volume);
 			}
-
-			// printf("            {\"row\": [");
-			// for (int i = 0; i < PAULA_VOICES; ++i)
-			// {
-			//     static const char* notes[] =
-   //              {
-   //                  "c-1", "c#1", "d-1", "d#1", "e-1", "f-1", "f#1", "g-1", "g#1", "a-1", "a#1", "b-1",
-   //                  "c-2", "c#2", "d-2", "d#2", "e-2", "f-2", "f#2", "g-2", "g#2", "a-2", "a#2", "b-2",
-   //                  "c-3", "c#3", "d-3", "d#3", "e-3", "f-3", "f#3", "g-3", "g#3", "a-3", "a#3", "b-3",
-   //                  ""
-   //              };
-			//     moduleChannel_t* channel = &song->channels[i];
-			//     note_t note = song->patterns[modPattern][(song->row * PAULA_VOICES) + channel->n_chanindex];
-			// 	int note_index = find_note_by_period(note.period);
-			// 	if (note.period != 0 || note.sample != 0 || note.command != 0 || note.param != 0)
-			// 	{
-			// 	    printf("[\"%s\", %d, \"%x%02x\"]", notes[note_index], note.sample, note.command & 0xf, note.param);
-			// 	}
-			// 	else
-			// 	{
-			// 	    printf("[]");
-			// 	}
-			// 	if (i != PAULA_VOICES - 1)
-			// 	{
-   //                  printf(", ");
-			// 	}
-			// }
-			// printf("]},\n");
-			// fflush(stdout);
 
 			setDMA();
 		}
@@ -1591,9 +1483,6 @@ bool intMusic(void) // replayer ticker
 		if (editor.blockMarkFlag)
 			ui.updateStatusText = true;
 
-		printf("            {\"comment\": \"pattern=%d, position=%d, row=%d\"},\n",
-		    modPattern, modPos, song->row - 1
-		);
 	}
 	else // tick > 0 (handle effects)
 	{
@@ -1605,99 +1494,7 @@ bool intMusic(void) // replayer ticker
 			nextPosition();
 	}
 
-	// cwbaker: Trace periods, offsets, and volumes for each channel
-	typedef struct voice_t
-    {
-  		volatile bool DMA_active;
-
-        int period;
-        int volume;
-
-  		// internal registers
-  		bool DMATriggerFlag, nextSampleStage;
-  		int8_t AUD_DAT[2]; // DMA data buffer
-  		const int8_t *location; // current location
-  		uint16_t lengthCounter; // current length
-  		int32_t sampleCounter; // how many bytes left in AUD_DAT
-  		double dSample; // currently held sample point (multiplied by volume)
-  		double dDelta, dPhase;
-
-  		// for BLEP synthesis
-  		double dLastDelta, dLastPhase, dBlepOffset;
-
-  		// registers modified by Paula functions
-  		const int8_t *AUD_LC; // location (data pointer)
-  		uint16_t AUD_LEN;
-  		double AUD_PER_delta;
-  		double AUD_VOL;
-    } paulaVoice_t;
-
-    extern paulaVoice_t paula[PAULA_VOICES];
-
-    printf("            ");
-    for (int i = 0; i < PAULA_VOICES; ++i)
-    {
-        int period = 0;
-        int sample = 0;
-        int volume = 0;
-        int offset = 0;
-        if (paula[i].DMA_active && paula[i].location != NULL && paula[i].AUD_LC != NULL && paula[i].lengthCounter >= 1)
-        {
-            // Ignore non-looping samples looping over the two zero samples
-            // at the start of the sample.  This is effectively not playing
-            // and Amp expects this to be logged as an empty array, i.e.
-            // period, sample, volume, and offset are all 0.
-            if (paula[i].lengthCounter > 2 || paula[i].AUD_LEN > 2)
-            {
-                period = paula[i].period;
-                volume = paula[i].volume;
-
-                // Search through all samples to find which one contains paula[i].location
-                for (int j = 0; j < MOD_SAMPLES; j++)
-                {
-                    moduleSample_t *s = &song->samples[j];
-                    if (s->length > 0)
-                    {
-                        const int8_t *start = &song->sampleData[s->offset];
-                        const int8_t *end = start + s->length;
-                        const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter) + (paula[i].nextSampleStage ? 1 : 0);
-                        const int8_t *aud_lc = paula[i].AUD_LC;
-                        if (location >= start && location <= end)
-                        {
-                            // If the loop start is outside of the sample then this
-                            // channel has encountered the special case of a finished
-                            // sample changing to a different sample with a portamento
-                            // to tone effect.  This delays the start of the new sample
-                            // until the next sample is fetched from memory and starts
-                            // playing that sample from the loop start point.
-                            if (aud_lc < start || aud_lc > end)
-                            {
-                                period = 0;
-                                sample = 0;
-                                volume = 0;
-                                offset = 0;
-                                break;
-                            }
-
-                            sample = j;
-                            offset = (int) floorf((double) (location - start) + paula[i].dPhase);
-                            // printf("offset=%d %g\n", offset, (double) (location - start) + paula[i].dPhase);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if (period != 0 || volume != 0 || offset != 0)
-        {
-            printf("[%d, %d, %d, %d], ", period, sample + 1, volume, offset);
-        }
-        else
-        {
-            printf( "[], ");
-        }
-    }
-    printf("\n");
+	dumpTickData();
 
 	// command F00 = stop song, do it here (so that the scopes are updated properly)
 	if (doStopSong)
@@ -1863,16 +1660,7 @@ void decPatt(void)
 
 void modPlay(int16_t patt, int16_t pos, int8_t row)
 {
-	// Close any previous JSON before starting new playback to ensure clean output
-	if (jsonNeedsClosing)
-	{
-		printf("        ]\n    ]\n}\n");
-		fflush(stdout);
-		jsonNeedsClosing = false;
-	}
-
-	// Reset sample dump flags when starting playback
-	samplesDumped = false;
+	dumpClose();
 
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
@@ -1950,14 +1738,7 @@ void clearSong(void)
 	if (song == NULL)
 		return;
 
-	// Close any active JSON before clearing song to ensure proper termination
-	if (jsonNeedsClosing)
-	{
-		printf("        ]\n    ]\n}\n");
-		fflush(stdout);
-		jsonNeedsClosing = false;
-	}
-	samplesDumped = false;
+	dumpClose();
 
 	memset(song->header.patternTable, 0, sizeof (song->header.patternTable));
 	memset(song->header.name, 0, sizeof (song->header.name));
@@ -2053,14 +1834,7 @@ void modFree(void)
 	if (song == NULL)
 		return; // not allocated
 
-	// Close any active JSON before freeing module to prevent incomplete output
-	if (jsonNeedsClosing)
-	{
-		printf("        ]\n    ]\n}\n");
-		fflush(stdout);
-		jsonNeedsClosing = false;
-	}
-	samplesDumped = false;
+	dumpClose();
 
 	const bool audioWasntLocked = !audio.locked;
 	if (audioWasntLocked)
