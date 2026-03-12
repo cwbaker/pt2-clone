@@ -405,37 +405,38 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 
 			v->dPhase += v->dDelta;
 
-			// int offset = 0;
-   //  		int offset2 = 0;
-   //  		if (v->lengthCounter >= 1)
-   //          {
-   //              // Search through all samples to find which one contains paula[i].location
-   //              for (int k = 0; k < MOD_SAMPLES; k++)
-   //              {
-   //                  moduleSample_t *s = &song->samples[k];
-   //                  if (s->length > 0)
-   //                  {
-   //                      const int8_t *start = &song->sampleData[s->offset];
-   //                      const int8_t *end = start + s->length;
-   //                      const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter);
-   //                      if (location >= start && location < end)
-   //                      {
-   //                          offset = (int)(location - start);
-   //                          offset2 = s->length - paula[i].lengthCounter * 2;
-   //                          break;
-   //                      }
-   //                  }
-   //              }
-
-   //              // offset = offset - 2 + (1 - paula[i].sampleCounter);
-   //              offset2 = offset2 + (1 - paula[i].sampleCounter);
-   //          }
-   //          // printf("offset=%g, offset2=%g, dDelta=%g\n", (double) offset + v->dPhase, (double) offset2 + v->dPhase, v->dDelta);
-
 			if (v->dPhase >= 1.0)
 			{
 				v->dPhase -= 1.0;
 				refetchPeriod(v);
+			}
+
+			if (i == 0)
+			{
+    			int offset = 0;
+      		    if (v->lengthCounter >= 1)
+                {
+                    // Search through all samples to find which one contains paula[i].location
+                    for (int k = 0; k < MOD_SAMPLES; k++)
+                    {
+                        moduleSample_t *s = &song->samples[k];
+                        if (s->length > 0)
+                        {
+                            const int8_t *start = &song->sampleData[s->offset];
+                            const int8_t *end = start + s->length;
+                            const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter);
+                            if (location >= start && location < end)
+                            {
+                                offset = (int)(location - start);
+                                break;
+                            }
+                        }
+                    }
+
+                    // offset = offset - 2 + (1 - paula[i].sampleCounter);
+                    // offset2 = offset2 + (1 - paula[i].sampleCounter);
+                }
+                printf("%d: offset=%g, dPhase=%g, dDelta=%g\n", j, (double) offset + v->dPhase, v->dPhase, v->dDelta);
 			}
 		}
 	}
