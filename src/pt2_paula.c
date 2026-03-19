@@ -27,7 +27,7 @@ typedef struct voice_t
 	uint16_t lengthCounter; // current length
 	int32_t sampleCounter; // how many bytes left in AUD_DAT
 	double dSample; // currently held sample point (multiplied by volume)
-	double dDelta, dPhase;
+	uint64_t dDelta, dPhase; // 32.32 fixed point
 
 	// for BLEP synthesis
 	double dLastDelta, dLastPhase, dBlepOffset;
@@ -35,7 +35,7 @@ typedef struct voice_t
 	// registers modified by Paula functions
 	const int8_t *AUD_LC; // location (data pointer)
 	uint16_t AUD_LEN;
-	double AUD_PER_delta;
+	uint64_t AUD_PER_delta; // 32.32 fixed point
 	double AUD_VOL;
 } paulaVoice_t;
 
@@ -143,13 +143,14 @@ static void audxper(int32_t ch, uint16_t period)
 	v->period = realPeriod;
 
 	// to be read on next sampling step (or on DMA trigger)
-	v->AUD_PER_delta = dPeriodToDeltaDiv / realPeriod;
+	float frequency = 7093790.0f / (float)(realPeriod * 2);
+	v->AUD_PER_delta = ((uint64_t)(frequency * 65536.0f) << 16) / (uint64_t)dPaulaOutputFreq; // 32.32 fixed point
 
-	// printf("AUD_PER_delta = %f\n", v->AUD_PER_delta);
+	// printf("AUD_PER_delta = %f\n", (double)v->AUD_PER_delta / 4294967296.0);
 
 	// handle BLEP synthesis edge-case
 	if (v->dLastDelta == 0.0)
-		v->dLastDelta = v->AUD_PER_delta;
+		v->dLastDelta = (double)v->AUD_PER_delta / 4294967296.0;
 }
 
 static void audxvol(int32_t ch, uint16_t vol)
@@ -179,9 +180,9 @@ static void audxdat(int32_t ch, const int8_t *src)
 
 static inline void refetchPeriod(paulaVoice_t *v) // Paula stage
 {
-	// set BLEP variables
-	v->dLastPhase = v->dPhase;
-	v->dLastDelta = v->dDelta;
+	// set BLEP variables (convert 32.32 fixed point to double)
+	v->dLastPhase = (double)v->dPhase / 4294967296.0;
+	v->dLastDelta = (double)v->dDelta / 4294967296.0;
 	v->dBlepOffset = v->dLastPhase / v->dLastDelta;
 
 	// Paula only updates period (delta) during period refetching (this stage)
@@ -206,7 +207,7 @@ static void startDMA(int32_t ch)
 	v->DMATriggerFlag = true;
 
 	refetchPeriod(v);
-	v->dPhase = 0.0; // kludge: must be cleared *after* refetchPeriod()
+	v->dPhase = 0; // kludge: must be cleared *after* refetchPeriod()
 
 	v->DMA_active = true;
 }
@@ -404,40 +405,43 @@ void paulaGenerateSamples(double *dOutL, double *dOutR, int32_t numSamples)
 			dMixBuffer[j] += dSample;
 
 			v->dPhase += v->dDelta;
-
-			if (v->dPhase >= 1.0)
+			// uint64_t phase = v->dPhase;
+			if (v->dPhase >= 4294967296ULL) // 1.0 in 32.32 fixed point
 			{
-				v->dPhase -= 1.0;
+				v->dPhase -= 4294967296ULL;
 				refetchPeriod(v);
 			}
 
-			if (i == 0)
-			{
-    			int offset = 0;
-      		    if (v->lengthCounter >= 1)
-                {
-                    // Search through all samples to find which one contains paula[i].location
-                    for (int k = 0; k < MOD_SAMPLES; k++)
-                    {
-                        moduleSample_t *s = &song->samples[k];
-                        if (s->length > 0)
-                        {
-                            const int8_t *start = &song->sampleData[s->offset];
-                            const int8_t *end = start + s->length;
-                            const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter);
-                            if (location >= start && location < end)
-                            {
-                                offset = (int)(location - start);
-                                break;
-                            }
-                        }
-                    }
+			// if (i == 0)
+			// {
+   //  			int offset = 0;
+   //    		    if (v->lengthCounter >= 1)
+   //              {
+   //                  // Search through all samples to find which one contains paula[i].location
+   //                  for (int k = 0; k < MOD_SAMPLES; k++)
+   //                  {
+   //                      moduleSample_t *s = &song->samples[k];
+   //                      if (s->length > 0)
+   //                      {
+   //                          const int8_t *start = &song->sampleData[s->offset];
+   //                          const int8_t *end = start + s->length;
+   //                          const int8_t *location = paula[i].location - 2 + (1 - paula[i].sampleCounter);
+   //                          if (location >= start && location < end)
+   //                          {
+   //                              offset = (int)(location - start);
+   //                              break;
+   //                          }
+   //                      }
+   //                  }
 
-                    // offset = offset - 2 + (1 - paula[i].sampleCounter);
-                    // offset2 = offset2 + (1 - paula[i].sampleCounter);
-                }
-                printf("%d: offset=%g, dPhase=%g, dDelta=%g\n", j, (double) offset + v->dPhase, v->dPhase, v->dDelta);
-			}
+   //                  // offset = offset - 2 + (1 - paula[i].sampleCounter);
+   //                  // offset2 = offset2 + (1 - paula[i].sampleCounter);
+   //              }
+   //              {
+   //                  uint64_t fullOffset = ((uint64_t)offset << 32) + phase;
+   //                  printf("%d: offset=%g, dPhase=%g, dDelta=%g 0x%08x.0x%08x\n", j, (double)(fullOffset >> 32) + (double)(fullOffset & 0xffffffff) / 65536.0 / 65536.0, (double)(phase >> 32) + (double)(phase & 0xffffffff) / 65536.0 / 65536.0, (double)(v->dDelta & 0xffffffff) / 65536.0 / 65536.0, (uint32_t)(fullOffset >> 32), (uint32_t)(fullOffset & 0xffffffff));
+   //              }
+			// }
 		}
 	}
 
