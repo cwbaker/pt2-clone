@@ -1386,7 +1386,7 @@ bool intMusic(void) // replayer ticker
 			if (song->currPos == 0 && song->row == 0)
 				dumpOpen();
 
-			dumpTickComment(modPattern, modPos, song->row);
+			dumpTickPosition(modPattern, modPos, song->row);
 
 			// read note data and trigger voices
 			moduleChannel_t *ch = song->channels;

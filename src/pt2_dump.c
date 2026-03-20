@@ -109,15 +109,15 @@ static int dumpFindNoteByPeriod(int period)
 	return 0;
 }
 
-// Print a comment line for the current row (pattern, position, row)
-void dumpTickComment(int pattern, int position, int row)
+// Print a position marker for the current row (pattern, position, row).
+void dumpTickPosition(int pattern, int position, int row)
 {
 	if (!jsonNeedsClosing)
 		return;
 	if (!firstTickElement)
 		printf(",\n");
 	firstTickElement = false;
-	printf("            {\"comment\": \"pattern=%d, position=%d, row=%d\"}",
+	printf("            {\"pattern\": %d, \"position\": %d, \"row\": %d}",
 		pattern, position, row
 	);
 }
@@ -300,7 +300,7 @@ static void dumpPatternsJson(void)
 
 // Dump module data in JSON format (samples, pattern_order_table, patterns, ticks).
 // Writes the samples, pattern_order_table, and patterns sections, then opens ticks.
-// After calling this, use dumpTickComment/dumpTickData for each tick,
+// After calling this, use dumpTickPosition/dumpTickData for each tick,
 // then call dumpClose when done.
 void dumpOpen(void)
 {
