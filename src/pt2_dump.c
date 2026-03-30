@@ -130,10 +130,11 @@ void dumpTickData(void)
 
 	if (!firstTickElement)
 		printf(",\n");
+
 	firstTickElement = false;
 
 	// Cast the extern paula array to our local struct layout
-	paulaVoice_t *p = (paulaVoice_t *)paula;
+	paulaVoice_t *p = (paulaVoice_t*) paula;
 
 	printf("            ");
 	for (int i = 0; i < PAULA_VOICES; ++i)

@@ -316,15 +316,9 @@ int main(int argc, char *argv[])
 	{
 		loadModFromArg(argv[1]);
 
-		// play song
-		if (song->loaded)
-		{
-			editor.playMode = PLAY_MODE_NORMAL;
-			modPlay(DONT_SET_PATTERN, 0, DONT_SET_ROW);
-			editor.currMode = MODE_PLAY;
-			pointerSetMode(POINTER_MODE_PLAY, DO_CARRY);
-			statusAllRight();
-		}
+		// don't autoplay here -- mod2WavRender() below will start its own
+		// playback via restartSong(), and playing twice causes duplicate
+		// JSON output from dumpOpen().
 	}
 	else if (!editor.configFound)
 	{

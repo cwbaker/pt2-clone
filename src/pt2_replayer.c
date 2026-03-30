@@ -1271,6 +1271,9 @@ static bool renderEndCheck(void) // for MOD2WAV/PAT2SMP
 	if (!editor.mod2WavOngoing && !editor.pat2SmpOngoing)
 		return true; // we're not doing MOD2WAV/PAT2SMP
 
+	if (!editor.songPlaying)
+		return false; // F00 (stop song) ends rendering
+
 	bool noPatternDelay = (pattDelTime2 == 0);
 	if (noPatternDelay)
 	{
