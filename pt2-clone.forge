@@ -1,0 +1,84 @@
+-- Build the ProTracker 2 clone used to generate expected test output.  This
+-- follows "make-linux-noflac.sh"; Windows and macOS aren't supported.
+if operating_system() == 'linux' then
+    for _, cc in toolsets('^cc.*') do
+        local cc = cc:inherit {
+            defines = {
+                'NDEBUG';
+            };
+            warning_level = 0;
+            warnings_as_errors = false;
+        };
+        cc:all {
+            cc:Executable '${bin}/pt2-clone' {
+                libraries = {
+                    'm';
+                    'SDL2';
+                };
+                cc:Cc '${obj}/%1' {
+                    'src/gfx/pt2_gfx_aboutscreen.c';
+                    'src/gfx/pt2_gfx_diskop.c';
+                    'src/gfx/pt2_gfx_editop.c';
+                    'src/gfx/pt2_gfx_font.c';
+                    'src/gfx/pt2_gfx_icon.c';
+                    'src/gfx/pt2_gfx_loop_pins.c';
+                    'src/gfx/pt2_gfx_mute_buttons.c';
+                    'src/gfx/pt2_gfx_patcursor.c';
+                    'src/gfx/pt2_gfx_pointer.c';
+                    'src/gfx/pt2_gfx_posed.c';
+                    'src/gfx/pt2_gfx_sampler.c';
+                    'src/gfx/pt2_gfx_spectrum.c';
+                    'src/gfx/pt2_gfx_tracker.c';
+                    'src/gfx/pt2_gfx_vumeter.c';
+                    'src/modloaders/pt2_load_mod15.c';
+                    'src/modloaders/pt2_load_mod31.c';
+                    'src/modloaders/pt2_pp_unpack.c';
+                    'src/modloaders/pt2_xpk_unpack.c';
+                    'src/pt2_askbox.c';
+                    'src/pt2_audio.c';
+                    'src/pt2_blep.c';
+                    'src/pt2_bmp.c';
+                    'src/pt2_chordmaker.c';
+                    'src/pt2_config.c';
+                    'src/pt2_diskop.c';
+                    'src/pt2_downsample2x.c';
+                    'src/pt2_dump.c';
+                    'src/pt2_edit.c';
+                    'src/pt2_helpers.c';
+                    'src/pt2_hpc.c';
+                    'src/pt2_keyboard.c';
+                    'src/pt2_main.c';
+                    'src/pt2_math.c';
+                    'src/pt2_mod2wav.c';
+                    'src/pt2_module_loader.c';
+                    'src/pt2_module_saver.c';
+                    'src/pt2_mouse.c';
+                    'src/pt2_palette.c';
+                    'src/pt2_pat2smp.c';
+                    'src/pt2_pattern_viewer.c';
+                    'src/pt2_paula.c';
+                    'src/pt2_posed.c';
+                    'src/pt2_rcfilters.c';
+                    'src/pt2_replayer.c';
+                    'src/pt2_sample_loader.c';
+                    'src/pt2_sampler.c';
+                    'src/pt2_sample_saver.c';
+                    'src/pt2_sampling.c';
+                    'src/pt2_scopes.c';
+                    'src/pt2_structs.c';
+                    'src/pt2_tables.c';
+                    'src/pt2_textedit.c';
+                    'src/pt2_textout.c';
+                    'src/pt2_unicode.c';
+                    'src/pt2_visuals.c';
+                    'src/pt2_visuals_sync.c';
+                    'src/smploaders/pt2_load_aiff.c';
+                    'src/smploaders/pt2_load_flac.c';
+                    'src/smploaders/pt2_load_iff.c';
+                    'src/smploaders/pt2_load_raw.c';
+                    'src/smploaders/pt2_load_wav.c';
+                };
+            };
+        };
+    end
+end
